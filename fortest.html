@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-SHOP PRO | Cyber Edition</title>
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-XXXXXXXXXX'); 
+    </script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+    <style>
+        /* --- THEME COLORS OVERRIDE --- */
+        :root {
+            --primary: #7c3aed; /* Violet */
+            --accent: #f59e0b;  /* Gold */
+            --dark-bg: #0f172a;
+        }
+
+        .cart-sidebar { transition: transform 0.3s ease; }
+        .hidden-cart { transform: translateX(100%); }
+        .zoom-container { position: relative; overflow: hidden; cursor: crosshair; }
+        .zoom-lens {
+            position: absolute; border: 2px solid var(--primary); border-radius: 50%;
+            width: 140px; height: 140px; background-repeat: no-repeat;
+            display: none; pointer-events: none; box-shadow: 0 0 15px rgba(124, 58, 237, 0.3); z-index: 100;
+        }
+        .star-rating i { cursor: pointer; transition: color 0.2s; }
+        .star-rating i.active { color: var(--accent); }
+        .modal-overlay { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(8px); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .float-wa {
+            position: fixed; width: 55px; height: 55px; bottom: 85px; right: 20px;
+            background-color: #25d366; color: #FFF; border-radius: 50px; text-align: center;
+            font-size: 28px; box-shadow: 2px 2px 10px rgba(0,0,0,0.2); z-index: 40;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s ease;
+        }
+        .float-wa:hover { transform: scale(1.1); background-color: #128c7e; }
+
+        #scroll-to-top {
+            position: fixed; bottom: 155px; right: 20px;
+            width: 45px; height: 45px; background-color: var(--primary);
+            color: white; border-radius: 50%; display: flex;
+            align-items: center; justify-content: center;
+            cursor: pointer; box-shadow: 0 4px 10px rgba(124, 58, 237, 0.3);
+            z-index: 40; transition: all 0.3s ease;
+            opacity: 0; visibility: hidden; border: none;
+        }
+        #scroll-to-top.show { opacity: 1; visibility: visible; }
+        #scroll-to-top:hover { transform: translateY(-5px); background-color: #6d28d9; }
+
+        #toast-container {
+            position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+            z-index: 200; display: flex; flex-direction: column; gap: 10px; pointer-events: none;
+        }
+        .toast {
+            background: #1e1b4b; color: white; padding: 12px 24px; border-radius: 12px;
+            font-size: 13px; font-weight: 600; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+            animation: slideUp 0.3s ease-out, fadeOut 0.3s ease-in 2.2s forwards;
+            display: flex; align-items: center; gap: 8px;
+        }
+        @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes fadeOut { to { opacity: 0; } }
+
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: white; border-top: 1px solid #f1f5f9;
+            display: flex; justify-content: space-around; padding: 10px 0;
+            z-index: 50; box-shadow: 0 -2px 15px rgba(0,0,0,0.05);
+        }
+        .dark .bottom-nav { background: #1e1b4b; border-top: 1px solid #312e81; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; font-size: 10px; font-weight: bold; color: #94a3b8; }
+        .nav-item.active { color: var(--primary); }
+
+        .dark .bg-white { background-color: #1e1b4b !important; color: #f8fafc; }
+        .dark body { background-color: #0f172a !important; color: #f8fafc; }
+        .dark .bg-slate-50 { background-color: #0f172a !important; }
+        .dark .border { border-color: #312e81 !important; }
+        .dark .text-gray-900 { color: #f8fafc !important; }
+        .dark .bg-gray-50 { background-color: #312e81 !important; }
+        .dark input, .dark textarea, .dark select { background-color: #1e1b4b !important; color: white !important; border: 1px solid #4338ca !important; }
+
+        .slider-container { position: relative; width: 100%; height: 350px; overflow: hidden; border-radius: 24px; }
+        .slide { position: absolute; inset: 0; opacity: 0; transition: opacity 0.8s ease-in-out; }
+        .slide.active { opacity: 1; }
+
+        .skeleton {
+            background: #e2e8f0;
+            background: linear-gradient(110deg, #ede9fe 8%, #ddd6fe 18%, #ede9fe 33%);
+            border-radius: 20px;
+            background-size: 200% 100%;
+            animation: 1.5s shine linear infinite;
+        }
+        .dark .skeleton {
+            background: #312e81;
+            background: linear-gradient(110deg, #1e1b4b 8%, #312e81 18%, #1e1b4b 33%);
+            background-size: 200% 100%;
+        }
+        @keyframes shine { to { background-position-x: -200%; } }
+
+        .thumb-img {
+            width: 70px; height: 70px; object-fit: cover; border-radius: 12px; cursor: pointer;
+            border: 2px solid transparent; transition: all 0.2s;
+        }
+        .thumb-img.active { border-color: var(--primary); transform: scale(1.05); }
+
+        #search-suggestions {
+            position: absolute; top: 100%; left: 0; right: 0;
+            background: white; border-radius: 16px; margin-top: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 100;
+            max-height: 300px; overflow-y: auto; display: none;
+        }
+        .dark #search-suggestions { background: #1e1b4b; border: 1px solid #312e81; }
+
+        .sticky-cart-mobile {
+            position: fixed; bottom: 65px; left: 0; right: 0;
+            background: white; padding: 12px 20px;
+            display: flex; align-items: center; justify-content: space-between;
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.1); z-index: 45;
+            transform: translateY(150%); transition: transform 0.3s ease;
+        }
+        .dark .sticky-cart-mobile { background: #1e1b4b; border-top: 1px solid #312e81; }
+        .sticky-cart-mobile.show { transform: translateY(0); }
+
+        .heart-btn { transition: transform 0.2s; }
+        .heart-btn:active { transform: scale(1.3); }
+        .heart-active { color: #ef4444 !important; }
+        
+        .rev-img-preview { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd; }
+
+        .summary-card {
+            background: linear-gradient(135deg, #ffffff, #f5f3ff);
+            border: 1px solid #ddd6fe;
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px -1px rgba(124, 58, 237, 0.1);
+        }
+        .dark .summary-card {
+            background: linear-gradient(135deg, #1e1b4b, #0f172a);
+            border-color: #312e81;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans text-gray-900 transition-colors duration-300 pb-20">
+
+    <div id="toast-container"></div>
+
+    <button id="scroll-to-top" onclick="scrollToTop()">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+
+    <a href="https://wa.me/8801921695388" target="_blank" class="float-wa">
+        <i class="fab fa-whatsapp"></i>
+    </a>
+
+    <div id="sticky-mobile-bar" class="sticky-cart-mobile md:hidden">
+        <div class="flex flex-col">
+            <span id="sticky-p-name" class="text-[10px] font-bold text-gray-400 focus:outline-none truncate w-32 uppercase">Product Name</span>
+            <span id="sticky-p-price" class="text-violet-600 font-black">0 TK</span>
+        </div>
+        <button id="sticky-add-btn" class="bg-indigo-900 text-white px-6 py-2 rounded-xl font-bold text-xs uppercase">Add to Bag</button>
+    </div>
+
+    <div class="bottom-nav md:hidden">
+        <div class="nav-item active" onclick="location.reload()">
+            <i class="fas fa-home text-lg mb-1"></i> <span>HOME</span>
+        </div>
+        <div class="nav-item" onclick="document.getElementById('search-input').focus()">
+            <i class="fas fa-search text-lg mb-1"></i> <span>SEARCH</span>
+        </div>
+        <div class="nav-item relative" onclick="openWishlistPage()">
+            <i class="fas fa-heart text-lg mb-1"></i> <span>WISH</span>
+            <span id="nav-wish-count" class="absolute -top-1 -right-1 bg-pink-500 text-white text-[8px] rounded-full h-4 w-4 flex items-center justify-center">0</span>
+        </div>
+        <div class="nav-item relative" onclick="toggleCart()">
+            <i class="fas fa-shopping-bag text-lg mb-1"></i> <span>BAG</span>
+            <span id="nav-cart-count" class="absolute -top-1 -right-1 bg-violet-500 text-white text-[8px] rounded-full h-4 w-4 flex items-center justify-center">0</span>
+        </div>
+        <div class="nav-item" onclick="checkAdminPassword()">
+            <i class="fas fa-user-shield text-lg mb-1"></i> <span>ADMIN</span>
+        </div>
+    </div>
+
+    <nav class="bg-white shadow-sm p-4 sticky top-0 z-50 border-b">
+        <div class="container mx-auto flex justify-between items-center">
+            <div onclick="location.reload()" class="flex items-center gap-2 cursor-pointer group">
+    <svg width="45" height="45" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" class="transition-transform group-hover:rotate-12">
+        <defs>
+            <linearGradient id="cyberGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#7c3aed;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#f59e0b;stop-opacity:1" />
+            </linearGradient>
+        </defs>
+        <path d="M100,40 A60,60 0 1,1 40,100 A40,40 0 1,1 100,140 A25,25 0 1,0 125,115" 
+              fill="none" 
+              stroke="url(#cyberGradient)" 
+              stroke-width="15" 
+              stroke-linecap="round"/>
+        <circle cx="100" cy="100" r="8" fill="#f59e0b">
+            <animate attributeName="r" values="8;10;8" dur="2s" repeatCount="indefinite" />
+        </circle>
+    </svg>
+    <div class="flex flex-col leading-none">
+        <span class="text-xl font-black text-violet-600 italic uppercase tracking-tighter"> E-SHOP</span>
+        <span class="text-[10px] font-bold text-amber-500 tracking-[0.2em] ml-0">BANGLADESH </span>
+    </div>
+</div>
+            <div class="flex items-center space-x-6">
+                <button onclick="toggleDarkMode()" class="text-gray-500 hover:text-yellow-500 transition">
+                    <i id="dark-icon" class="fas fa-moon text-xl"></i>
+                </button>
+                <div class="relative cursor-pointer hidden md:block" onclick="openWishlistPage()">
+                    <i class="fas fa-heart text-2xl text-gray-700 dark:text-gray-300"></i>
+                    <span id="wish-count" class="absolute -top-2 -right-2 bg-pink-500 text-white text-[10px] font-bold rounded-full h-5 w-5 flex items-center justify-center">0</span>
+                </div>
+                <button onclick="checkAdminPassword()" class="hidden md:block text-[10px] font-bold text-gray-400 hover:text-violet-600 uppercase">Admin Access</button>
+                <div class="relative cursor-pointer hidden md:block" onclick="toggleCart()">
+                    <i class="fas fa-shopping-bag text-2xl text-gray-700"></i>
+                    <span id="cart-count" class="absolute -top-2 -right-2 bg-violet-600 text-white text-[10px] font-bold rounded-full h-5 w-5 flex items-center justify-center">0</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="bg-white px-4 py-3 border-b text-center">
+        <h3 id="dynamic-greeting" class="font-black text-sm uppercase italic text-violet-600 tracking-widest"></h3>
+    </div>
+
+    <div id="search-section" class="bg-white border-b p-4">
+        <div class="container mx-auto max-w-4xl relative mb-4">
+            <div class="flex flex-col gap-4">
+                <div class="relative flex-grow">
+                    <input type="text" id="search-input" onkeyup="handleSearch(event)" placeholder="Search premium collection..." class="w-full bg-slate-50 border-none p-4 pl-12 rounded-2xl outline-none focus:ring-2 focus:ring-violet-400 text-sm shadow-sm">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-300"></i>
+                </div>
+                
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <select id="sort-filter" onchange="applySorting()" class="bg-slate-50 border-none p-3 rounded-xl outline-none text-[10px] font-bold text-gray-500 shadow-sm cursor-pointer">
+                        <option value="default">SORT: DEFAULT</option>
+                        <option value="low-high">PRICE: LOW-HIGH</option>
+                        <option value="high-low">PRICE: HIGH-LOW</option>
+                        <option value="newest">LATEST</option>
+                    </select>
+
+                    <select id="size-filter" onchange="applySorting()" class="bg-slate-50 border-none p-3 rounded-xl outline-none text-[10px] font-bold text-gray-500 shadow-sm cursor-pointer">
+                        <option value="All">SIZE: ALL</option>
+                        <option value="M">SIZE: M</option>
+                        <option value="L">SIZE: L</option>
+                        <option value="XL">SIZE: XL</option>
+                        <option value="XXL">SIZE: XXL</option>
+                    </select>
+
+                    <select id="color-filter" onchange="applySorting()" class="bg-slate-50 border-none p-3 rounded-xl outline-none text-[10px] font-bold text-gray-500 shadow-sm cursor-pointer">
+                        <option value="All">COLOR: ALL</option>
+                        <option value="Black">BLACK</option>
+                        <option value="White">WHITE</option>
+                        <option value="Red">RED</option>
+                        <option value="Blue">BLUE</option>
+                    </select>
+
+                    <div class="flex items-center bg-slate-50 p-2 rounded-xl shadow-sm">
+                        <span class="text-[9px] font-bold text-gray-400 ml-1 mr-1">MAX:</span>
+                        <input type="number" id="max-price-filter" oninput="applySorting()" placeholder="Price" class="w-full bg-transparent border-none outline-none text-[10px] font-bold text-violet-600">
+                    </div>
+                </div>
+            </div>
+            <div id="search-suggestions" class="no-scrollbar"></div>
+        </div>
+        <div class="container mx-auto flex gap-3 overflow-x-auto no-scrollbar py-2" id="category-chips"></div>
+    </div>
+
+    <section id="hero-slider" class="container mx-auto px-6 mt-6">
+        <div class="slider-container shadow-2xl">
+            <div class="slide active">
+                <img src="https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=1200&q=80" class="w-full h-full object-cover">
+                <div class="absolute inset-0 bg-gradient-to-r from-indigo-950/70 to-transparent flex items-center p-12">
+                    <div class="text-white">
+                        <h2 class="text-4xl font-black mb-2 uppercase tracking-tighter">Luxury Deals!</h2>
+                        <p class="text-lg opacity-90">Exclusive 50% discount on tech & style.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="slide">
+                <img src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1200&q=80" class="w-full h-full object-cover">
+                <div class="absolute inset-0 bg-gradient-to-r from-violet-950/70 to-transparent flex items-center p-12">
+                    <div class="text-white">
+                        <h2 class="text-4xl font-black mb-2 uppercase tracking-tighter">New Collection</h2>
+                        <p class="text-lg opacity-90">Experience the future of fashion.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div id="admin-panel" class="hidden container mx-auto p-6 bg-white mt-4 border-2 border-violet-100 rounded-3xl shadow-xl space-y-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="summary-card">
+                <i class="fas fa-chart-line text-violet-500 text-2xl mb-2"></i>
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest">Today's Sales</h3>
+                <p id="stat-sales" class="text-2xl font-black text-violet-600">0 TK</p>
+            </div>
+            <div class="summary-card">
+                <i class="fas fa-users text-blue-500 text-2xl mb-2"></i>
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest">Total Visitors</h3>
+                <p id="stat-visitors" class="text-2xl font-black text-blue-600">0</p>
+            </div>
+            <div class="summary-card">
+                <i class="fas fa-fire text-amber-500 text-2xl mb-2"></i>
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest">Top Product</h3>
+                <p id="stat-top-product" class="text-sm font-black text-gray-800 dark:text-gray-100 truncate">N/A</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="space-y-3">
+                <h2 class="font-black text-violet-700 text-xs uppercase tracking-widest">Add Product</h2>
+                <input type="text" id="p-name" placeholder="Name" class="w-full border p-2 rounded-xl bg-gray-50 text-sm outline-none">
+                <input type="text" id="p-category" placeholder="Category" class="w-full border p-2 rounded-xl bg-gray-50 text-sm outline-none">
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="number" id="p-price" placeholder="Price" class="border p-2 rounded-xl bg-gray-50 text-sm outline-none">
+                    <input type="number" id="p-discount" placeholder="Disc %" class="border p-2 rounded-xl bg-gray-50 text-sm outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="text" id="p-size" placeholder="Sizes (M,L,XL)" class="border p-2 rounded-xl bg-gray-50 text-sm outline-none">
+                    <input type="text" id="p-color" placeholder="Colors (Black,Red)" class="border p-2 rounded-xl bg-gray-50 text-sm outline-none">
+                </div>
+                <input type="number" id="p-stock" placeholder="Stock" class="w-full border p-2 rounded-xl bg-gray-50 text-sm outline-none">
+                <input type="text" id="p-img" placeholder="Img URLs (comma separated)" class="w-full border p-2 rounded-xl bg-gray-50 text-sm outline-none">
+                <button onclick="addProduct()" class="w-full bg-violet-600 text-white font-bold py-2 rounded-xl text-sm">Publish</button>
+            </div>
+            <div class="border-l lg:pl-8 space-y-3">
+                <h2 class="font-black text-blue-700 text-xs uppercase tracking-widest">Update Stock</h2>
+                <select id="update-product-select" class="w-full border p-2 rounded-xl bg-gray-50 text-sm outline-none">
+                    <option value="">-- Select Product --</option>
+                </select>
+                <input type="number" id="new-stock-val" placeholder="Add Qty" class="w-full border p-2 rounded-xl bg-gray-50 text-sm outline-none">
+                <button onclick="updateStock()" class="w-full bg-blue-600 text-white font-bold py-2 rounded-xl text-sm">Update</button>
+            </div>
+            <div class="border-l lg:pl-8 space-y-3">
+                <h2 class="font-black text-amber-700 text-xs uppercase tracking-widest">Coupons</h2>
+                <input type="text" id="coupon-code" placeholder="Code" class="w-full border p-2 rounded-xl bg-gray-50 text-sm outline-none">
+                <input type="number" id="coupon-amt" placeholder="Amount (TK)" class="w-full border p-2 rounded-xl bg-gray-50 text-sm outline-none">
+                <button onclick="addCoupon()" class="w-full bg-amber-600 text-white font-bold py-2 rounded-xl text-sm">Add Coupon</button>
+            </div>
+        </div>
+        <button onclick="logoutAdmin()" class="text-red-400 text-[10px] font-bold uppercase underline">Close Admin</button>
+    </div>
+
+    <main id="main-grid" class="container mx-auto p-6">
+        <h3 class="font-black text-xl mb-6 uppercase italic tracking-widest border-l-4 border-violet-600 pl-4">Collections</h3>
+        <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8"></div>
+    </main>
+
+    <section id="wishlist-page" class="hidden container mx-auto p-6 min-h-screen bg-white dark:bg-slate-900 mt-4 rounded-3xl shadow-sm border mb-10">
+        <button onclick="closeWishlistPage()" class="mb-8 text-gray-400 hover:text-violet-600 font-bold text-xs uppercase"><i class="fas fa-arrow-left mr-2"></i> Continue Shopping</button>
+        <h2 class="text-3xl font-black mb-8 uppercase italic">My Wishlist</h2>
+        <div id="wishlist-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8"></div>
+        <div id="empty-wish-lottie" class="hidden flex flex-col items-center justify-center py-20">
+            <lottie-player src="https://assets10.lottiefiles.com/packages/lf20_V9t630.json" background="transparent" speed="1" style="width: 250px; height: 250px;" loop autoplay></lottie-player>
+            <p class="text-gray-400 text-sm font-bold uppercase mt-4">Your wishlist is empty</p>
+        </div>
+    </section>
+
+    <section id="product-details" class="hidden container mx-auto p-6 min-h-screen bg-white mt-4 rounded-3xl shadow-sm border mb-10">
+        <button onclick="closeDetails()" class="mb-8 text-gray-400 hover:text-violet-600 font-bold text-xs uppercase"><i class="fas fa-arrow-left mr-2"></i> Back</button>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
+            <div>
+                <div class="zoom-container rounded-3xl border bg-slate-50 flex items-center justify-center p-4 relative" id="img-zoom-area">
+                    <div id="detail-discount-tag" class="hidden absolute top-4 left-4 bg-red-600 text-white px-3 py-1 rounded-lg text-sm font-bold z-10"></div>
+                    <img id="detail-img" src="" class="max-h-[500px] w-full object-contain">
+                    <div id="zoom-lens" class="zoom-lens"></div>
+                </div>
+                <div id="thumbnail-gallery" class="flex gap-2 mt-4 overflow-x-auto no-scrollbar py-2"></div>
+            </div>
+            <div class="space-y-6">
+                <div class="flex justify-between items-start">
+                    <h2 id="detail-name" class="text-4xl font-black text-gray-900 leading-tight flex-grow"></h2>
+                    <button onclick="event.stopPropagation(); toggleWishlist(currentViewProductId)" class="heart-btn text-2xl p-2"><i id="detail-heart" class="far fa-heart"></i></button>
+                </div>
+                <div id="detail-stock-status" class="text-xs font-bold"></div>
+                
+                <div id="detail-variant-info" class="space-y-3 border-y py-4 border-slate-100">
+                    <p id="available-sizes" class="text-[10px] font-bold text-gray-500 uppercase"></p>
+                    <p id="available-colors" class="text-[10px] font-bold text-gray-500 uppercase"></p>
+                </div>
+
+                <div class="flex items-center gap-4">
+                    <p id="detail-price" class="text-4xl font-light text-violet-600"></p>
+                    <p id="detail-old-price" class="text-xl text-gray-400 line-through hidden"></p>
+                </div>
+
+                <div class="flex flex-wrap gap-2 pt-2 pb-4">
+                    <span class="w-full text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Share:</span>
+                    <button onclick="shareFB()" class="bg-indigo-600 text-white w-10 h-10 rounded-xl hover:scale-110 transition flex items-center justify-center"><i class="fab fa-facebook-f text-sm"></i></button>
+                    <button onclick="shareWA()" class="bg-emerald-500 text-white w-10 h-10 rounded-xl hover:scale-110 transition flex items-center justify-center"><i class="fab fa-whatsapp text-sm"></i></button>
+                    <button onclick="copyProductLink()" class="bg-slate-100 text-slate-600 w-10 h-10 rounded-xl hover:scale-110 transition flex items-center justify-center"><i class="fas fa-link text-sm"></i></button>
+                </div>
+
+                <button id="detail-add-btn" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-xl hover:bg-violet-600 transition shadow-xl disabled:bg-slate-200">ADD TO BAG</button>
+                <div class="pt-6 border-t border-slate-100 space-y-3 text-slate-600 text-sm">
+                    <p><i class="fas fa-truck text-violet-500 mr-2"></i> Inside Dhaka 24h Premium Delivery</p>
+                    <p><i class="fas fa-shield-alt text-violet-500 mr-2"></i> Quality Assurance Guaranteed</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="border-t border-slate-100 pt-10">
+            <h3 class="font-black text-xl mb-6 uppercase italic">Similar Treasures</h3>
+            <div id="related-products-grid" class="grid grid-cols-2 lg:grid-cols-4 gap-6"></div>
+        </div>
+
+        <div class="pt-8 border-t border-slate-100 mt-12">
+            <h3 class="font-bold text-xs uppercase tracking-widest mb-4">Customer Reviews</h3>
+            <div id="review-list" class="space-y-4 mb-6 max-h-[400px] overflow-y-auto no-scrollbar"></div>
+            <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl space-y-3">
+                <div id="star-input" class="star-rating text-slate-300 flex gap-1 text-xl">
+                    <i class="fas fa-star" onclick="setRating(1)"></i>
+                    <i class="fas fa-star" onclick="setRating(2)"></i>
+                    <i class="fas fa-star" onclick="setRating(3)"></i>
+                    <i class="fas fa-star" onclick="setRating(4)"></i>
+                    <i class="fas fa-star" onclick="setRating(5)"></i>
+                </div>
+                <input type="text" id="rev-name" placeholder="Your Name" class="w-full p-3 rounded-xl text-sm outline-none border border-slate-100">
+                <textarea id="rev-text" placeholder="Your thoughts..." class="w-full p-3 rounded-xl text-sm outline-none border border-slate-100 h-24"></textarea>
+                
+                <div class="flex flex-col gap-2">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase">Add Photos</label>
+                    <input type="file" id="rev-image-input" accept="image/*" class="text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100">
+                </div>
+
+                <button onclick="addReview()" class="bg-violet-600 text-white px-6 py-3 rounded-xl text-sm font-black uppercase tracking-wider shadow-lg">Submit</button>
+            </div>
+        </div>
+    </section>
+
+    <div id="cart-sidebar" class="fixed right-0 top-0 h-full w-full md:w-96 bg-white dark:bg-slate-900 shadow-2xl z-[60] p-6 cart-sidebar hidden-cart flex flex-col border-l border-slate-100 dark:border-indigo-900">
+        <div class="flex justify-between items-center mb-8">
+            <h2 class="text-2xl font-black italic uppercase">Your Bag</h2>
+            <button onclick="toggleCart()"><i class="fas fa-times text-slate-300"></i></button>
+        </div>
+        <div id="cart-items" class="flex-grow overflow-y-auto space-y-4 no-scrollbar"></div>
+        
+        <div id="empty-cart-lottie" class="hidden flex flex-col items-center justify-center py-10">
+            <lottie-player src="https://assets10.lottiefiles.com/packages/lf20_V9t630.json" background="transparent" speed="1" style="width: 200px; height: 200px;" loop autoplay></lottie-player>
+            <p class="text-slate-400 text-xs font-bold uppercase mt-4">Empty Bag</p>
+        </div>
+
+        <div class="mt-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-dashed border-slate-200 flex gap-2">
+            <input type="text" id="apply-coupon-input" placeholder="Promo Code" class="flex-grow p-2 rounded-xl text-xs outline-none">
+            <button onclick="applyCoupon()" class="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs">Apply</button>
+        </div>
+        <div class="border-t border-slate-100 dark:border-slate-800 pt-6 mt-4 space-y-2">
+            <div class="flex justify-between text-sm"><span>Subtotal:</span><span id="cart-subtotal">0 TK</span></div>
+            <div id="discount-row" class="hidden flex justify-between text-amber-500 font-bold"><span>Discount:</span><span id="coupon-discount-val">0 TK</span></div>
+            <div class="flex justify-between font-black text-2xl pt-2 border-t border-slate-100 dark:border-slate-800"><span>Total:</span><span id="cart-total" class="text-violet-600">0 TK</span></div>
+            <button onclick="showOrderForm()" class="w-full bg-violet-600 text-white py-4 rounded-2xl font-bold mt-4 shadow-lg shadow-violet-200 dark:shadow-none">SECURE CHECKOUT</button>
+        </div>
+    </div>
+
+    <div id="order-modal" class="hidden fixed inset-0 z-[100] modal-overlay flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl p-8 shadow-2xl">
+            <h2 class="text-2xl font-black mb-6 text-center uppercase italic">Delivery Details</h2>
+            <div class="space-y-4">
+                <input type="text" id="cust-name" placeholder="Full Name" class="w-full border p-3 rounded-xl bg-slate-50 outline-none focus:ring-2 focus:ring-violet-400">
+                <input type="text" id="cust-phone" placeholder="Mobile Number" class="w-full border p-3 rounded-xl bg-slate-50 outline-none focus:ring-2 focus:ring-violet-400">
+                <textarea id="cust-address" placeholder="Complete Address" class="w-full border p-3 rounded-xl bg-slate-50 outline-none focus:ring-2 focus:ring-violet-400 h-24"></textarea>
+                <div class="flex gap-3">
+                    <button onclick="hideOrderForm()" class="flex-1 bg-slate-100 py-3 rounded-xl font-bold text-slate-500">Cancel</button>
+                    <button onclick="handleCheckout()" class="flex-1 bg-violet-600 py-3 rounded-xl font-bold text-white shadow-lg">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="invoice-modal" class="hidden fixed inset-0 z-[110] modal-overlay flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-8 shadow-2xl text-center">
+            <div class="w-20 h-20 bg-violet-100 text-violet-600 rounded-full flex items-center justify-center text-4xl mx-auto mb-6"><i class="fas fa-check"></i></div>
+            <h2 class="text-xl font-black mb-2 uppercase">Order Received!</h2>
+            <p class="text-slate-500 text-sm mb-6">Processing your luxury order...</p>
+            <div class="bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 mb-6 text-left border border-dashed border-violet-200">
+                <p class="text-[10px] uppercase font-bold text-slate-400">Invoice ID</p>
+                <p id="inv-id-display" class="font-black text-slate-800 dark:text-slate-100 mb-2"></p>
+                <p class="text-[10px] uppercase font-bold text-slate-400">Total Due</p>
+                <p id="inv-total-display" class="font-black text-violet-600 text-xl"></p>
+            </div>
+            <button onclick="closeInvoice()" class="w-full bg-slate-900 text-white py-3 rounded-xl font-bold">Done</button>
+        </div>
+    </div>
+
+    <script>
+        // JS Logic remains exactly the same as provided by user
+               const firebaseConfig = {
+    apiKey: "AIzaSyCJuZ1C_YxBONcntpnCk8YybNAxUx5KN2E",
+    authDomain: "website-er-jonno-space.firebaseapp.com",
+    databaseURL: "https://website-er-jonno-space-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "website-er-jonno-space",
+    storageBucket: "website-er-jonno-space.firebasestorage.app",
+    messagingSenderId: "1000495985475",
+    appId: "1:1000495985475:web:82a39b5933660073c475f6"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const auth = firebase.auth();
+const ADMIN_EMAIL = "nafisanasrin.nitty@gmail.com";
+let products = [];
+let wishlist = JSON.parse(localStorage.getItem('myWishlist')) || [];
+let coupons = {};
+let reviews = {};
+
+let salesData = { dailyTotal: 0, lastReset: new Date().toLocaleDateString(), productSales: {} };
+let visitorCount = 0;
+
+        let cart = [];
+        let isAdminLoggedIn = false;
+        let currentViewProductId = null;
+        let selectedRating = 0;
+        let activeCategory = 'All';
+
+        const orderSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3');
+
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        function showNextSlide() {
+            if(slides.length === 0) return;
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (currentSlide + 1) % slides.length;
+            slides[currentSlide].classList.add('active');
+        }
+        setInterval(showNextSlide, 4000);
+
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            const icon = document.getElementById('dark-icon');
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                icon.className = 'fas fa-moon text-xl';
+                localStorage.setItem('theme', 'light');
+            } else {
+                html.classList.add('dark');
+                icon.className = 'fas fa-sun text-xl text-yellow-400';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        if (localStorage.getItem('theme') === 'dark') {
+            document.documentElement.classList.add('dark');
+            setTimeout(() => { if(document.getElementById('dark-icon')) document.getElementById('dark-icon').className = 'fas fa-sun text-xl text-yellow-400'; }, 100);
+        }
+
+        function showToast(msg, type = "success") {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type === 'error' ? 'border-l-4 border-red-500' : 'border-l-4 border-violet-500'}`;
+            toast.innerHTML = `<i class="fas ${type === 'error' ? 'fa-exclamation-circle text-red-400' : 'fa-check-circle text-violet-400'}"></i> ${msg}`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 2500);
+        }
+
+        function showSkeletons() {
+            const grid = document.getElementById('product-grid');
+            grid.innerHTML = Array(8).fill(0).map(() => `
+                <div class="bg-white rounded-3xl border border-slate-100 p-3">
+                    <div class="skeleton h-48 mb-4"></div>
+                    <div class="skeleton h-4 w-1/2 mx-auto mb-2"></div>
+                    <div class="skeleton h-6 w-3/4 mx-auto mb-2"></div>
+                    <div class="skeleton h-6 w-1/3 mx-auto"></div>
+                </div>
+            `).join('');
+        }
+
+       /* --- UPDATED GREETING LOGIC --- */
+        function updateGreeting() {
+            const greetingEl = document.getElementById('dynamic-greeting');
+            if(!greetingEl) return;
+            const hour = new Date().getHours();
+            let msg = "";
+            if (hour >= 5 && hour < 12) msg = "Good Morning!";
+            else if (hour >= 12 && hour < 17) msg = "Good Afternoon!";
+            else if (hour >= 17 && hour < 21) msg = "Good Evening!";
+            else msg = "Good Night!	";
+            greetingEl.innerText = msg;
+        }
+
+
+        function applySorting() {
+            updateGreeting();
+            updateWishCount();
+            const sortVal = document.getElementById('sort-filter').value;
+            const sizeVal = document.getElementById('size-filter').value;
+            const colorVal = document.getElementById('color-filter').value;
+            const maxPrice = parseInt(document.getElementById('max-price-filter').value) || Infinity;
+            
+            let currentList = activeCategory === 'All' ? [...products] : products.filter(p => (p.category || 'General') === activeCategory);
+            
+            currentList = currentList.filter(p => {
+                const matchesPrice = p.price <= maxPrice;
+                const matchesSize = sizeVal === 'All' || (p.size && p.size.toUpperCase().split(',').map(s=>s.trim()).includes(sizeVal.toUpperCase()));
+                const matchesColor = colorVal === 'All' || (p.color && p.color.toLowerCase().split(',').map(c=>c.trim()).includes(colorVal.toLowerCase()));
+                return matchesPrice && matchesSize && matchesColor;
+            });
+
+            const q = document.getElementById('search-input').value.toLowerCase();
+            if(q) {
+                currentList = currentList.filter(p => p.name.toLowerCase().includes(q));
+            }
+
+            if(sortVal === 'low-high') { currentList.sort((a, b) => a.price - b.price); }
+            else if(sortVal === 'high-low') { currentList.sort((a, b) => b.price - a.price); }
+            else if(sortVal === 'newest') { currentList.sort((a, b) => b.id - a.id); }
+
+            displayProducts(currentList);
+        }
+
+        function displayProducts(data = products) {
+            const grid = document.getElementById('product-grid');
+            renderCategories();
+            if(data.length === 0 && products.length > 0) { grid.innerHTML = "<p class='col-span-full text-center py-20 text-slate-400 text-xs uppercase font-bold'>No matches found.</p>"; return; }
+            if(data.length === 0) { grid.innerHTML = "<p class='col-span-full text-center py-20 text-slate-400 text-xs uppercase'>Collection Empty.</p>"; return; }
+            grid.innerHTML = data.map(p => {
+                const firstImg = p.img.split(',')[0].trim();
+                const isInWishlist = wishlist.includes(p.id);
+                return `
+                <div onclick="openDetails(${p.id})" class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 p-3 hover:shadow-xl transition cursor-pointer relative">
+                    ${p.discount > 0 ? `<span class="absolute top-4 left-4 bg-violet-600 text-white text-[10px] font-black px-2 py-1 rounded-lg z-10">OFF ${p.discount}%</span>` : ''}
+                    <button onclick="event.stopPropagation(); toggleWishlist(${p.id})" class="absolute top-4 right-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur w-8 h-8 rounded-full z-10 text-[12px] shadow-sm"><i class="${isInWishlist ? 'fas fa-heart text-red-500' : 'far fa-heart'}"></i></button>
+                    ${isAdminLoggedIn ? `<button onclick="event.stopPropagation(); deleteProduct(${p.id})" class="absolute top-14 right-4 bg-red-500 text-white w-8 h-8 rounded-full z-10 text-[10px]"><i class="fas fa-trash-alt"></i></button>` : ''}
+                    <div class="h-48 rounded-2xl overflow-hidden bg-slate-50 mb-4"><img src="${firstImg}" class="w-full h-full object-cover hover:scale-110 transition duration-500"></div>
+                    <div class="px-2 pb-2 text-center">
+                        <p class="text-[9px] text-violet-500 uppercase font-bold mb-1">${p.category || 'General'}</p>
+                        <h3 class="font-bold text-slate-800 dark:text-slate-100 truncate text-sm">${p.name}</h3>
+                        <p class="text-violet-600 font-black text-lg">${p.price} TK</p>
+                        <p class="text-[10px] ${p.stock > 0 ? 'text-slate-400' : 'text-red-500 font-bold'} mt-1 uppercase">Stock: ${p.stock > 0 ? p.stock : 'Sold Out'}</p>
+                    </div>
+                </div>`}).join('');
+        }
+
+        function toggleWishlist(id) {
+            const index = wishlist.indexOf(id);
+            if (index === -1) { wishlist.push(id); showToast("Added to wishlist!"); }
+            else { wishlist.splice(index, 1); showToast("Removed from wishlist", "error"); }
+            localStorage.setItem('myWishlist', JSON.stringify(wishlist));
+            applySorting(); updateDetailHeart(id); updateWishCount();
+            if(!document.getElementById('wishlist-page').classList.contains('hidden')) renderWishlistItems();
+        }
+
+        function updateWishCount() {
+            const counts = wishlist.length;
+            document.getElementById('wish-count').innerText = counts;
+            if(document.getElementById('nav-wish-count')) document.getElementById('nav-wish-count').innerText = counts;
+        }
+
+        function openWishlistPage() {
+            document.getElementById('main-grid').classList.add('hidden');
+            document.getElementById('hero-slider').classList.add('hidden');
+            document.getElementById('search-section').classList.add('hidden');
+            document.getElementById('product-details').classList.add('hidden');
+            document.getElementById('wishlist-page').classList.remove('hidden');
+            window.scrollTo(0,0);
+            renderWishlistItems();
+        }
+
+        function closeWishlistPage() {
+            document.getElementById('wishlist-page').classList.add('hidden');
+            document.getElementById('main-grid').classList.remove('hidden');
+            document.getElementById('hero-slider').classList.remove('hidden');
+            document.getElementById('search-section').classList.remove('hidden');
+        }
+
+        function renderWishlistItems() {
+            const grid = document.getElementById('wishlist-grid');
+            const empty = document.getElementById('empty-wish-lottie');
+            const wishItems = products.filter(p => wishlist.includes(p.id));
+            if(wishItems.length === 0) { grid.innerHTML = ""; empty.classList.remove('hidden'); }
+            else {
+                empty.classList.add('hidden');
+                grid.innerHTML = wishItems.map(p => {
+                    const firstImg = p.img.split(',')[0].trim();
+                    return `
+                    <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border p-3 hover:shadow-xl transition relative">
+                        <button onclick="toggleWishlist(${p.id})" class="absolute top-4 right-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur w-8 h-8 rounded-full z-10 text-[12px] text-red-500"><i class="fas fa-heart"></i></button>
+                        <div onclick="openDetails(${p.id})" class="h-48 rounded-2xl overflow-hidden bg-slate-50 mb-4 cursor-pointer"><img src="${firstImg}" class="w-full h-full object-cover"></div>
+                        <div class="px-2 pb-2 text-center">
+                            <h3 class="font-bold text-slate-800 dark:text-slate-100 truncate text-sm">${p.name}</h3>
+                            <p class="text-violet-600 font-black text-lg mb-3">${p.price} TK</p>
+                            <button onclick="addToCart(${p.id})" class="w-full bg-violet-600 text-white py-2 rounded-xl text-[10px] font-bold uppercase">Move to Bag</button>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+        }
+
+        function updateDetailHeart(id) {
+            const heart = document.getElementById('detail-heart');
+            if(heart && currentViewProductId === id) { heart.className = wishlist.includes(id) ? 'fas fa-heart text-red-500' : 'far fa-heart'; }
+        }
+
+        function renderCategories() {
+            const container = document.getElementById('category-chips');
+            const uniqueCats = ['All', ...new Set(products.map(p => p.category || 'General'))];
+            container.innerHTML = uniqueCats.map(cat => `<button onclick="filterByCategory('${cat}')" class="px-5 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${activeCategory === cat ? 'bg-violet-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400'}">${cat}</button>`).join('');
+        }
+
+        function filterByCategory(cat) { activeCategory = cat; showSkeletons(); setTimeout(applySorting, 800); }
+
+        function handleSearch(e) {
+            const q = e.target.value.toLowerCase();
+            const suggestionsBox = document.getElementById('search-suggestions');
+            if (q.length < 1) { suggestionsBox.style.display = 'none'; applySorting(); return; }
+            const filtered = products.filter(p => p.name.toLowerCase().includes(q) || (p.category && p.category.toLowerCase().includes(q)));
+            if (filtered.length > 0) {
+                suggestionsBox.innerHTML = filtered.slice(0, 5).map(p => `<div onclick="selectSearch(${p.id})" class="flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer border-b last:border-0 border-slate-100 dark:border-slate-700"><img src="${p.img.split(',')[0].trim()}" class="w-10 h-10 object-cover rounded-lg"><div><p class="text-xs font-bold">${p.name}</p><p class="text-[10px] text-violet-600 font-black">${p.price} TK</p></div></div>`).join('');
+                suggestionsBox.style.display = 'block';
+            } else { suggestionsBox.style.display = 'none'; }
+            applySorting();
+        }
+
+        function selectSearch(id) { document.getElementById('search-suggestions').style.display = 'none'; openDetails(id); }
+        document.addEventListener('click', (e) => { if (!e.target.closest('#search-section')) { document.getElementById('search-suggestions').style.display = 'none'; } });
+
+        function handleCheckout() {
+            const name = document.getElementById('cust-name').value;
+            const phone = document.getElementById('cust-phone').value;
+            const address = document.getElementById('cust-address').value;
+            if(!name || !phone || !address) return showToast("Required details missing!", "error");
+            
+            orderSound.play(); 
+            const invoiceID = "ESP-PRM-" + Math.floor(1000 + Math.random() * 9000);
+            const totalText = document.getElementById('cart-total').innerText;
+            const numericTotal = parseInt(totalText.replace(/[^0-9]/g, ''));
+
+            salesData.dailyTotal += numericTotal;
+cart.forEach(item => { const key = item.name.replace(/[.#$\/\[\]]/g, '_'); salesData.productSales[key] = (salesData.productSales[key] || 0) + 1; });
+db.ref('salesData').set(salesData);
+
+const groupedCart = cart.reduce((acc, item) => { if (!acc[item.id]) { acc[item.id] = { ...item, qty: 1 }; } else { acc[item.id].qty += 1; } return acc; }, {});
+let productDetails = Object.values(groupedCart).map(it => `- ${it.name} [x${it.qty}]`).join('%0A');
+let message = `*ORDER ID: ${invoiceID}*%0A*NEW PREMIUM ORDER*%0A%0A*Customer:* ${name}%0A*Phone:* ${phone}%0A*Address:* ${address}%0A%0A*Items:*%0A${productDetails}%0A%0A*Total: ${totalText}*`;
+
+cart.forEach(it => { const p = products.find(x => x.id === it.id); if(p && p.stock > 0) { db.ref('products/' + it.id + '/stock').set(p.stock - 1); p.stock--; } });
+            
+            document.getElementById('inv-id-display').innerText = invoiceID;
+            document.getElementById('inv-total-display').innerText = totalText;
+            document.getElementById('invoice-modal').classList.remove('hidden');
+            
+            setTimeout(() => { window.open(`https://wa.me/8801921695388?text=${message}`, '_blank'); }, 2000);
+            cart = []; updateCartUI(); hideOrderForm(); toggleCart(); closeDetails(); applySorting(); updateAdminDashboard();
+            showToast("Order Processed!");
+        }
+
+        function updateAdminDashboard() {
+            document.getElementById('stat-sales').innerText = salesData.dailyTotal + " TK";
+            document.getElementById('stat-visitors').innerText = visitorCount || 0;
+            let topProd = "N/A"; let maxSales = 0;
+            for (const [name, qty] of Object.entries(salesData.productSales)) { if (qty > maxSales) { maxSales = qty; topProd = name; } }
+            document.getElementById('stat-top-product').innerText = topProd + (maxSales > 0 ? ` (${maxSales})` : "");
+        }
+
+        function closeInvoice() { document.getElementById('invoice-modal').classList.add('hidden'); }
+        function showOrderForm() { if(cart.length > 0) document.getElementById('order-modal').classList.remove('hidden'); }
+        function hideOrderForm() { document.getElementById('order-modal').classList.add('hidden'); }
+        function setRating(n) { selectedRating = n; const stars = document.querySelectorAll('#star-input i'); stars.forEach((s, i) => s.classList.toggle('active', i < n)); }
+        
+        function addReview() { 
+            const name = document.getElementById('rev-name').value; const text = document.getElementById('rev-text').value; const imgInput = document.getElementById('rev-image-input');
+            if(!name || !text || selectedRating === 0) return showToast("Review fields missing!", "error"); 
+            const handleStorage = (imgBase64 = null) => {
+    const pid = currentViewProductId;
+    const existing = (reviews[pid] || []).slice();
+    existing.unshift({ id: Date.now(), name, text, rating: selectedRating, date: new Date().toLocaleDateString(), image: imgBase64 });
+    db.ref('reviews/' + pid).set(existing);
+    document.getElementById('rev-name').value = ''; document.getElementById('rev-text').value = ''; imgInput.value = ''; setRating(0); showToast("Review submitted!"); 
+};
+            if(imgInput.files && imgInput.files[0]) { const reader = new FileReader(); reader.onload = (e) => handleStorage(e.target.result); reader.readAsDataURL(imgInput.files[0]); }
+            else { handleStorage(); }
+        }
+
+        function renderReviews(pid) { 
+            const list = document.getElementById('review-list'); const data = reviews[pid] || []; 
+            list.innerHTML = data.length === 0 ? "<p class='text-slate-400 text-[10px] uppercase font-bold text-center py-4'>No reviews yet.</p>" : data.map(r => `
+                <div class='bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm relative'>
+                    <div class='flex justify-between items-start mb-2'>
+                        <div><p class='font-black text-slate-800 dark:text-slate-100 text-sm'>${r.name}</p><div class='text-amber-400 text-[10px]'>${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</div></div>
+                    </div>
+                    <p class='text-slate-600 dark:text-slate-400 text-xs leading-relaxed mb-3'>${r.text}</p>
+                    ${r.image ? `<img src="${r.image}" class="rev-img-preview mb-3">` : ''}
+                    <p class='text-[8px] text-slate-400 mt-2 uppercase font-bold'>${r.date}</p>
+                </div>`).join(''); 
+        }
+
+        function renderRelatedProducts(currentProduct) {
+            const grid = document.getElementById('related-products-grid');
+            const related = products.filter(p => p.category === currentProduct.category && p.id !== currentProduct.id).slice(0, 4);
+            grid.innerHTML = related.map(p => { const firstImg = p.img.split(',')[0].trim(); return `<div onclick="openDetails(${p.id})" class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border p-2 hover:shadow-md transition cursor-pointer"><div class="h-32 rounded-xl overflow-hidden bg-slate-50 mb-2"><img src="${firstImg}" class="w-full h-full object-cover"></div><h4 class="font-bold text-slate-800 dark:text-slate-100 truncate text-[12px] text-center">${p.name}</h4><p class="text-violet-600 font-black text-sm text-center">${p.price} TK</p></div>`}).join('');
+        }
+
+        function openDetails(id) { 
+            currentViewProductId = id; const p = products.find(x => x.id === id); 
+            document.getElementById('main-grid').classList.add('hidden'); document.getElementById('hero-slider').classList.add('hidden'); document.getElementById('search-section').classList.add('hidden'); 
+            document.getElementById('wishlist-page').classList.add('hidden'); document.getElementById('product-details').classList.remove('hidden'); window.scrollTo(0,0); 
+            const imgList = p.img.split(',').map(i => i.trim());
+            document.getElementById('detail-img').src = imgList[0];
+            document.getElementById('thumbnail-gallery').innerHTML = imgList.map((src, idx) => `<img src="${src}" class="thumb-img ${idx === 0 ? 'active' : ''}" onclick="changeDetailImg('${src}', this)">`).join('');
+            document.getElementById('detail-name').innerText = p.name; 
+            document.getElementById('detail-price').innerText = p.price + " TK"; 
+            updateDetailHeart(id);
+            document.getElementById('available-sizes').innerText = "Sizes: " + (p.size || "All");
+            document.getElementById('available-colors').innerText = "Colors: " + (p.color || "Standard");
+            const btn = document.getElementById('detail-add-btn'); 
+            if(p.stock > 0) { 
+                document.getElementById('detail-stock-status').innerHTML = `<span class='text-emerald-600 uppercase tracking-widest'>● Available Stock (${p.stock})</span>`; 
+                btn.disabled = false; btn.innerText = "ADD TO BAG"; btn.onclick = () => addToCart(p.id); 
+                document.getElementById('sticky-p-name').innerText = p.name; document.getElementById('sticky-p-price').innerText = p.price + " TK"; document.getElementById('sticky-add-btn').onclick = () => addToCart(p.id);
+            } else { document.getElementById('detail-stock-status').innerHTML = `<span class='text-red-500 uppercase tracking-widest'>● Out of Stock</span>`; btn.disabled = true; btn.innerText = "SOLD OUT"; } 
+            renderReviews(id); renderRelatedProducts(p); initZoom('detail-img', 'zoom-lens');
+        }
+
+        function changeDetailImg(src, thumb) { document.getElementById('detail-img').src = src; document.querySelectorAll('.thumb-img').forEach(t => t.classList.remove('active')); thumb.classList.add('active'); initZoom('detail-img', 'zoom-lens'); }
+        function closeDetails() { document.getElementById('main-grid').classList.remove('hidden'); document.getElementById('hero-slider').classList.remove('hidden'); document.getElementById('search-section').classList.remove('hidden'); document.getElementById('product-details').classList.add('hidden'); document.getElementById('sticky-mobile-bar').classList.remove('show'); }
+        function addToCart(id) { const p = products.find(x => x.id === id); if(p.stock > 0) { cart.push(p); updateCartUI(); toggleCart(); showToast("Added to bag!"); } }
+        function toggleCart() { document.getElementById('cart-sidebar').classList.toggle('hidden-cart'); }
+        
+        function updateCartUI() { 
+            let count = cart.length; document.getElementById('cart-count').innerText = count; 
+            if(document.getElementById('nav-cart-count')) document.getElementById('nav-cart-count').innerText = count; 
+            let sub = cart.reduce((s, p) => s + p.price, 0); 
+            const groupedCart = cart.reduce((acc, item) => { if (!acc[item.id]) { acc[item.id] = { ...item, qty: 1 }; } else { acc[item.id].qty += 1; } return acc; }, {});
+            if(count === 0) { document.getElementById('empty-cart-lottie').classList.remove('hidden'); } else { document.getElementById('empty-cart-lottie').classList.add('hidden'); }
+            document.getElementById('cart-items').innerHTML = Object.values(groupedCart).map((it) => `<div class='flex items-center gap-4 bg-slate-50 dark:bg-slate-800 p-3 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm'><img src='${it.img.split(',')[0].trim()}' class='w-12 h-12 rounded-xl object-cover'><div class='flex-grow'><h4 class='text-[11px] font-bold truncate w-32'>${it.name}</h4><p class='text-violet-600 font-black text-xs'>${it.price} TK</p><div class="flex items-center gap-3 mt-1"><button onclick="changeQty(${it.id}, -1)" class="w-6 h-6 flex items-center justify-center bg-white dark:bg-slate-700 border rounded-lg text-xs">-</button><span class="text-xs font-bold">${it.qty}</span><button onclick="changeQty(${it.id}, 1)" class="w-6 h-6 flex items-center justify-center bg-white dark:bg-slate-700 border rounded-lg text-xs">+</button></div></div><button onclick='removeFromCart(${it.id})' class="p-2 text-red-400"><i class='fas fa-trash-alt'></i></button></div>`).join(''); 
+            document.getElementById('cart-subtotal').innerText = sub + " TK"; document.getElementById('cart-total').innerText = sub + " TK"; 
+        }
+
+        function changeQty(id, delta) {
+            if (delta === 1) { const p = products.find(x => x.id === id); if (p.stock > cart.filter(item => item.id === id).length) { cart.push(p); } else { showToast("Stock limit reached!", "error"); } }
+            else { const index = cart.findLastIndex(item => item.id === id); if (index !== -1) cart.splice(index, 1); }
+            updateCartUI();
+        }
+
+        function removeFromCart(id) { cart = cart.filter(item => item.id !== id); updateCartUI(); showToast("Removed", "error"); }
+        function checkAdminPassword() {
+    if (isAdminLoggedIn) { document.getElementById('admin-panel').classList.remove('hidden'); refreshAdminDropdown(); updateAdminDashboard(); applySorting(); return; }
+    const pass = prompt("Access Key:");
+    if (!pass) return;
+    auth.signInWithEmailAndPassword(ADMIN_EMAIL, pass)
+                        .then(
+            () => { isAdminLoggedIn = true; document.getElementById('admin-panel').classList.remove('hidden'); refreshAdminDropdown(); updateAdminDashboard(); applySorting(); },
+            () => { showToast("Wrong password!", "error"); }
+        );
+}
+        function logoutAdmin() { auth.signOut(); isAdminLoggedIn = false; document.getElementById('admin-panel').classList.add('hidden'); applySorting(); }
+        
+        function addProduct() { 
+    const n = document.getElementById('p-name').value; const cat = document.getElementById('p-category').value.trim() || 'General'; const pr = parseInt(document.getElementById('p-price').value); const d = parseInt(document.getElementById('p-discount').value) || 0; const s = parseInt(document.getElementById('p-stock').value); const im = document.getElementById('p-img').value; const size = document.getElementById('p-size').value; const color = document.getElementById('p-color').value;
+    if(n && pr && im && !isNaN(s)) {
+        const id = Date.now();
+        db.ref('products/' + id).set({ id, name:n, category: cat, price:pr, discount:d, stock:s, img:im, size: size, color: color });
+        showToast("Product Added!");
+    } 
+}
+
+        function updateStock() { const id = parseInt(document.getElementById('update-product-select').value); const am = parseInt(document.getElementById('new-stock-val').value); if(id && !isNaN(am)) { const p = products.find(x => x.id === id); if(p) { db.ref('products/' + id + '/stock').set(p.stock + am); showToast("Stock Updated!"); } } }
+function refreshAdminDropdown() { const sel = document.getElementById('update-product-select'); if(sel) sel.innerHTML = '<option value="">-- Select Product --</option>' + products.map(p => `<option value="${p.id}">${p.name} (${p.stock})</option>`).join(''); }
+function deleteProduct(id) { if(confirm("Confirm Delete?")) { db.ref('products/' + id).remove(); showToast("Product Deleted", "error"); } }
+function addCoupon() { const code = document.getElementById('coupon-code').value.trim().toUpperCase(); const amt = parseInt(document.getElementById('coupon-amt').value); if(code && !isNaN(amt)) { db.ref('coupons/' + code).set(amt); showToast("Coupon Active!"); } }
+        
+        function applyCoupon() {
+            const input = document.getElementById('apply-coupon-input').value.trim().toUpperCase();
+            if(coupons[input]) {
+                const discount = coupons[input]; const sub = cart.reduce((s, p) => s + p.price, 0);
+                document.getElementById('discount-row').classList.remove('hidden'); document.getElementById('coupon-discount-val').innerText = "-" + discount + " TK";
+                document.getElementById('cart-total').innerText = (sub - discount) + " TK"; showToast("Discount Applied!");
+            } else { showToast("Invalid Code", "error"); }
+        }
+
+        function initZoom(imgID, lensID) { 
+            const img = document.getElementById(imgID); const lens = document.getElementById(lensID); const container = document.getElementById('img-zoom-area'); 
+            if(!img || !lens || !container) return;
+            container.onmousemove = (e) => { 
+                lens.style.display = "block"; const rect = img.getBoundingClientRect(); 
+                let x = e.clientX - rect.left; let y = e.clientY - rect.top; 
+                x = Math.max(0, Math.min(x, img.width)); y = Math.max(0, Math.min(y, img.height));
+                lens.style.left = (x - lens.offsetWidth/2) + "px"; lens.style.top = (y - lens.offsetHeight/2) + "px"; 
+                const z = 2.5; lens.style.backgroundImage = `url('${img.src}')`; lens.style.backgroundSize = (img.width * z) + "px " + (img.height * z) + "px"; 
+                lens.style.backgroundPosition = `-${(x * z) - lens.offsetWidth/2}px -${(y * z) - lens.offsetHeight/2}px`; 
+            }; 
+            container.onmouseleave = () => lens.style.display = "none";
+        }
+
+        function scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+        window.onscroll = function() {
+            const sBtn = document.getElementById('scroll-to-top'); const mBar = document.getElementById('sticky-mobile-bar');
+            if (window.pageYOffset > 300) sBtn.classList.add('show'); else sBtn.classList.remove('show');
+            if(!document.getElementById('product-details').classList.contains('hidden')) {
+                const dBtn = document.getElementById('detail-add-btn');
+                if(dBtn.getBoundingClientRect().bottom < 0) mBar.classList.add('show'); else mBar.classList.remove('show');
+            } else mBar.classList.remove('show');
+        };
+
+        showSkeletons();
+
+db.ref('products').on('value', (snap) => {
+    const val = snap.val();
+    products = val ? Object.values(val) : [];
+    applySorting();
+    refreshAdminDropdown();
+    updateAdminDashboard();
+});
+
+db.ref('coupons').on('value', (snap) => { coupons = snap.val() || {}; });
+
+db.ref('reviews').on('value', (snap) => {
+    reviews = snap.val() || {};
+    if (currentViewProductId !== null) renderReviews(currentViewProductId);
+});
+
+db.ref('salesData').on('value', (snap) => {
+    let val = snap.val();
+    const today = new Date().toLocaleDateString();
+    if (!val) { val = { dailyTotal: 0, lastReset: today, productSales: {} }; db.ref('salesData').set(val); return; }
+    if (val.lastReset !== today) { val.dailyTotal = 0; val.lastReset = today; db.ref('salesData').set(val); return; }
+    salesData = val; if (!salesData.productSales) salesData.productSales = {};
+    updateAdminDashboard();
+});
+
+if (!sessionStorage.getItem('visited')) {
+    db.ref('visitorCount').transaction(count => (count || 0) + 1);
+    sessionStorage.setItem('visited', 'true');
+}
+db.ref('visitorCount').on('value', (snap) => { visitorCount = snap.val() || 0; updateAdminDashboard(); });
+    </script>
+</body>
+</html>
